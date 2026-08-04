@@ -1,0 +1,9 @@
+services:
+  ld-vue:
+    build: .
+    container_name: ld-vue
+    ports:
+      - "8080:80"
+    environment:
+      LD_API_8808: "192.168.1.40:8808"
+      LD_API_8081: "192.168.1.40:8081"

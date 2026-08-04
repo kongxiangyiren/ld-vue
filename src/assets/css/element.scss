@@ -1,0 +1,30 @@
+// element-plus 主题色
+@forward 'element-plus/theme-chalk/src/common/var.scss' with (
+  $colors: (
+    'primary': (
+      'base': #0052d9
+    )
+  ),
+  $menu: (
+    text-color: rgba(255, 255, 255, 0.55),
+    bg-color: transparent,
+    active-color: #fff,
+    item-height: 36px
+  ),
+
+  $fill-color: (
+    lighter: #f3f3f3
+  ),
+  $text-color: (
+    regular: rgba(0, 0, 0, 0.9)
+  )
+);
+
+.el-dialog__title {
+  font-weight: 600;
+}
+
+.el-button--info {
+  --el-color-info: #e8e8e8;
+  --el-color-white: rgba(0, 0, 0, 0.9);
+}
