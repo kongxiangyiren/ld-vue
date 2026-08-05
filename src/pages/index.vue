@@ -71,7 +71,7 @@
   const dimensionOptions = computed<DimensionOption[]>(() => {
     const model = formModel.value;
     const resolutions = model?.resolutions;
-    const defaultSize = model?.generation_size ?? 1024;
+    const defaultSize = 512;
     const candidates: Array<[number, number]> =
       resolutions && resolutions.length > 0
         ? resolutions
@@ -112,11 +112,11 @@
     form.cfg = model.defaults.cfg;
     form.scheduler = model.defaults.scheduler;
 
-    const defaultSize = model.generation_size || 1024;
+    const resolutionDefaultSize = model.generation_size || 1024;
     if (model.resolutions.length) {
       const preferred =
         model.resolutions.find(
-          ([width, height]) => width === defaultSize && height === defaultSize
+          ([width, height]) => width === resolutionDefaultSize && height === resolutionDefaultSize
         ) ??
         model.resolutions[0];
       if (preferred) {
@@ -124,8 +124,8 @@
         form.height = preferred[1];
       }
     } else {
-      form.width = defaultSize;
-      form.height = defaultSize;
+      form.width = 512;
+      form.height = 512;
     }
   }
 
@@ -201,9 +201,26 @@
 
   async function handleDimensionChange(value: string) {
     const [width, height] = value.split('x').map(Number);
-    if (width && height) {
-      form.width = width;
-      form.height = height;
+    if (!width || !height) {
+      return;
+    }
+
+    const previousWidth = form.width;
+    const previousHeight = form.height;
+    form.width = width;
+    form.height = height;
+
+    const model = formModel.value;
+    if (!model) {
+      return;
+    }
+
+    try {
+      await ld.selectModel(model.id, form.width, form.height);
+    } catch (error) {
+      form.width = previousWidth;
+      form.height = previousHeight;
+      ElMessage.error(error instanceof Error ? error.message : '模型尺寸切换失败');
     }
   }
 
@@ -507,6 +524,8 @@
               <el-select
                 :model-value="currentDimension"
                 class="w-full"
+                :loading="ld.selecting"
+                :disabled="ld.selecting"
                 @change="handleDimensionChange"
               >
                 <el-option

@@ -45,9 +45,9 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
-    '/models': RouteRecordInfo<
-      '/models',
-      '/models',
+    '/model-management': RouteRecordInfo<
+      '/model-management',
+      '/model-management',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -88,9 +88,9 @@ declare module 'vue-router/auto-routes' {
       pathParamNames:
         | never
     }
-    'src/pages/models.vue': {
+    'src/pages/model-management.vue': {
       routes:
-        | '/models'
+        | '/model-management'
       views:
         | never
       pathParamNames:

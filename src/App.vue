@@ -11,7 +11,7 @@
 
   const navigation = [
     { label: '图片生成', to: '/', icon: MagicStick },
-    { label: '模型管理', to: '/models', icon: Monitor },
+  { label: '模型管理', to: '/model-management', icon: Monitor },
     { label: '生成画廊', to: '/gallery', icon: Collection },
     { label: '默认参数', to: '/settings', icon: Setting }
   ];

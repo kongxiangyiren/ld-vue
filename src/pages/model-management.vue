@@ -140,7 +140,7 @@
                     当前
                   </span>
                 </div>
-                <div class="mt-0.5 truncate text-xs text-muted">{{ row.id }}</div>
+                <div class="mt-0.5 truncate text-xs text-muted">{{ row.description }}</div>
               </div>
             </div>
           </template>
