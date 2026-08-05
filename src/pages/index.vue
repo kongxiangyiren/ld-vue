@@ -217,22 +217,27 @@
       throw new Error('没有可用模型');
     }
 
-    await ld.selectModel(model.id, form.width, form.height);
+    await ld.refreshStatus();
+    const current = ld.status;
+    if (current?.state === 'error') {
+      throw new Error(current.message ?? '模型加载异常');
+    }
+
+    const isReady =
+      current?.state === 'running' &&
+      current.serving_model_id === model.id &&
+      current.width === form.width &&
+      current.height === form.height;
+
+    if (!isReady) {
+      await ld.selectModel(model.id, form.width, form.height);
+    }
     return model;
   }
 
   async function handleGenerate() {
     if (!form.prompt.trim()) {
       ElMessage.warning('请输入正向提示词');
-      return;
-    }
-
-    try {
-      if (!(await validateTokenLimits())) {
-        return;
-      }
-    } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : 'Token 校验失败');
       return;
     }
 
@@ -249,6 +254,9 @@
 
     try {
       const model = await ensureModelReady();
+      if (!(await validateTokenLimits())) {
+        return;
+      }
 
       const params: Record<string, unknown> = {
         prompt: form.prompt,
