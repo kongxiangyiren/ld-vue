@@ -1,529 +1,527 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { Download, Picture, Refresh, UploadFilled, VideoPlay } from '@element-plus/icons-vue';
-import { ElMessage } from 'element-plus';
-import type { GenerateImageParams, Module } from '@kongxiangyiren/ld-api';
+  import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+  import { Download, Picture, Refresh, UploadFilled, VideoPlay } from '@element-plus/icons-vue';
+  import { ElMessage } from 'element-plus';
+  import type { GenerateImageParams, Module } from '@kongxiangyiren/ld-api';
 
-import { useGalleryStore } from '@/stores/gallery';
-import { useLdStore } from '@/stores/ld';
-import { useReuseStore, type ReusePayload } from '@/stores/reuse';
-import { useSettingsStore, type SchedulerOption } from '@/stores/settings';
-import {
-  base64FromDataUrl,
-  downloadDataUrl,
-  rawRgbToImageUrl,
-  readFileAsDataUrl
-} from '@/utils/image';
+  import { useGalleryStore } from '@/stores/gallery';
+  import { useLdStore } from '@/stores/ld';
+  import { useReuseStore, type ReusePayload } from '@/stores/reuse';
+  import { useSettingsStore, type SchedulerOption } from '@/stores/settings';
+  import {
+    base64FromDataUrl,
+    downloadDataUrl,
+    rawRgbToImageUrl,
+    readFileAsDataUrl
+  } from '@/utils/image';
 
-const TOKEN_LIMIT = 77;
+  const TOKEN_LIMIT = 77;
 
-interface ResultItem {
-  id: string;
-  imageUrl: string;
-  width: number;
-  height: number;
-  seed: number;
-  generationTimeMs: number;
-}
-
-interface DimensionOption {
-  label: string;
-  value: string;
-  width: number;
-  height: number;
-}
-
-const ld = useLdStore();
-const gallery = useGalleryStore();
-const reuse = useReuseStore();
-const settings = useSettingsStore();
-
-defineOptions({ name: 'GeneratorPage' });
-
-const form = reactive({ ...settings.settings });
-const mode = ref<'txt2img' | 'img2img' | 'inpaint'>('txt2img');
-const generating = ref(false);
-const progress = ref(0);
-const progressImage = ref('');
-const resultItems = ref<ResultItem[]>([]);
-const activeIndex = ref(0);
-const positiveTokenCount = ref<number | null>(null);
-const negativeTokenCount = ref<number | null>(null);
-const imageDataUrl = ref('');
-const imageBase64 = ref('');
-const maskDataUrl = ref('');
-const maskBase64 = ref('');
-const imageInput = ref<HTMLInputElement>();
-const maskInput = ref<HTMLInputElement>();
-
-let tokenTimer: ReturnType<typeof setTimeout> | undefined;
-let tokenController: AbortController | null = null;
-let settingsTimer: ReturnType<typeof setTimeout> | undefined;
-
-function scheduleSettingsSave() {
-  if (settingsTimer) {
-    clearTimeout(settingsTimer);
+  interface ResultItem {
+    id: string;
+    imageUrl: string;
+    width: number;
+    height: number;
+    seed: number;
+    generationTimeMs: number;
   }
-  settingsTimer = setTimeout(() => {
-    Object.assign(settings.settings, form);
-    settings.saveSettings();
-    settingsTimer = undefined;
-  }, 500);
-}
 
-const schedulerOptions: Array<{ label: string; value: SchedulerOption }> = [
-  { label: 'DPM++ 2M Karras', value: 'dpm' },
-  { label: 'DPM++ 2M + Karras', value: 'dpm_karras' },
-  { label: 'DPM++ 2M SDE', value: 'dpm_sde' },
-  { label: 'DPM++ 2M SDE + Karras', value: 'dpm_sde_karras' },
-  { label: 'Euler A', value: 'euler_a' },
-  { label: 'Euler A + Karras', value: 'euler_a_karras' },
-  { label: 'Euler', value: 'euler' },
-  { label: 'Euler + Karras', value: 'euler_karras' },
-  { label: 'LCM', value: 'lcm' }
-];
+  interface DimensionOption {
+    label: string;
+    value: string;
+    width: number;
+    height: number;
+  }
 
-const formModel = computed(
-  () => ld.models.find(item => item.id === ld.selectedModelId) ?? null
-);
+  const ld = useLdStore();
+  const gallery = useGalleryStore();
+  const reuse = useReuseStore();
+  const settings = useSettingsStore();
 
-const dimensionOptions = computed<DimensionOption[]>(() => {
-  const model = formModel.value;
-  const resolutions = model?.resolutions;
-  const defaultSize = 512;
-  const candidates: Array<[number, number]> =
-    resolutions && resolutions.length > 0
-      ? resolutions
-      : [
-          [defaultSize, defaultSize],
-          [512, 512],
-          [768, 768],
-          [1024, 1024],
-          [1280, 1280],
-          [1536, 1536]
-        ];
+  defineOptions({ name: 'GeneratorPage' });
 
-  const seen = new Set<string>();
-  return candidates.flatMap(([width, height]) => {
-    const value = `${width}x${height}`;
-    if (seen.has(value)) {
-      return [];
+  const form = reactive({ ...settings.settings });
+  const mode = ref<'txt2img' | 'img2img' | 'inpaint'>('txt2img');
+  const generating = ref(false);
+  const progress = ref(0);
+  const progressImage = ref('');
+  const resultItems = ref<ResultItem[]>([]);
+  const activeIndex = ref(0);
+  const positiveTokenCount = ref<number | null>(null);
+  const negativeTokenCount = ref<number | null>(null);
+  const imageDataUrl = ref('');
+  const imageBase64 = ref('');
+  const maskDataUrl = ref('');
+  const maskBase64 = ref('');
+  const imageInput = ref<HTMLInputElement>();
+  const maskInput = ref<HTMLInputElement>();
+
+  let tokenTimer: ReturnType<typeof setTimeout> | undefined;
+  let tokenController: AbortController | null = null;
+  let settingsTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function scheduleSettingsSave() {
+    if (settingsTimer) {
+      clearTimeout(settingsTimer);
     }
-    seen.add(value);
-    return [{ label: `${width} × ${height}`, value, width, height }];
+    settingsTimer = setTimeout(() => {
+      Object.assign(settings.settings, form);
+      settings.saveSettings();
+      settingsTimer = undefined;
+    }, 500);
+  }
+
+  const schedulerOptions: Array<{ label: string; value: SchedulerOption }> = [
+    { label: 'DPM++ 2M Karras', value: 'dpm' },
+    { label: 'DPM++ 2M + Karras', value: 'dpm_karras' },
+    { label: 'DPM++ 2M SDE', value: 'dpm_sde' },
+    { label: 'DPM++ 2M SDE + Karras', value: 'dpm_sde_karras' },
+    { label: 'Euler A', value: 'euler_a' },
+    { label: 'Euler A + Karras', value: 'euler_a_karras' },
+    { label: 'Euler', value: 'euler' },
+    { label: 'Euler + Karras', value: 'euler_karras' },
+    { label: 'LCM', value: 'lcm' }
+  ];
+
+  const formModel = computed(() => ld.models.find(item => item.id === ld.selectedModelId) ?? null);
+
+  const dimensionOptions = computed<DimensionOption[]>(() => {
+    const model = formModel.value;
+    const resolutions = model?.resolutions;
+    const defaultSize = 512;
+    const candidates: Array<[number, number]> =
+      resolutions && resolutions.length > 0
+        ? resolutions
+        : [
+            [defaultSize, defaultSize],
+            [512, 512],
+            [768, 768],
+            [1024, 1024],
+            [1280, 1280],
+            [1536, 1536]
+          ];
+
+    const seen = new Set<string>();
+    return candidates.flatMap(([width, height]) => {
+      const value = `${width}x${height}`;
+      if (seen.has(value)) {
+        return [];
+      }
+      seen.add(value);
+      return [{ label: `${width} × ${height}`, value, width, height }];
+    });
   });
-});
 
-const currentDimension = computed(() => `${form.width}x${form.height}`);
-const hasSelectedModel = computed(() => Boolean(formModel.value));
-const activeResult = computed(() => resultItems.value[activeIndex.value] ?? null);
-const positiveOverLimit = computed(() => (positiveTokenCount.value ?? 0) > TOKEN_LIMIT);
-const negativeOverLimit = computed(() => (negativeTokenCount.value ?? 0) > TOKEN_LIMIT);
+  const currentDimension = computed(() => `${form.width}x${form.height}`);
+  const hasSelectedModel = computed(() => Boolean(formModel.value));
+  const activeResult = computed(() => resultItems.value[activeIndex.value] ?? null);
+  const positiveOverLimit = computed(() => (positiveTokenCount.value ?? 0) > TOKEN_LIMIT);
+  const negativeOverLimit = computed(() => (negativeTokenCount.value ?? 0) > TOKEN_LIMIT);
 
-function applyModelDefaults(model: Module | null) {
-  if (!model) {
-    return;
-  }
-
-  form.prompt = model.defaults.prompt;
-  form.negativePrompt = model.defaults.negative_prompt;
-  form.steps = model.defaults.steps;
-  form.cfg = model.defaults.cfg;
-  form.scheduler = model.defaults.scheduler;
-
-  const resolutionDefaultSize = model.generation_size || 1024;
-  if (model.resolutions.length) {
-    const preferred =
-      model.resolutions.find(
-        ([width, height]) => width === resolutionDefaultSize && height === resolutionDefaultSize
-      ) ?? model.resolutions[0];
-    if (preferred) {
-      form.width = preferred[0];
-      form.height = preferred[1];
+  function applyModelDefaults(model: Module | null) {
+    if (!model) {
+      return;
     }
-  } else {
-    form.width = 512;
-    form.height = 512;
+
+    form.prompt = model.defaults.prompt;
+    form.negativePrompt = model.defaults.negative_prompt;
+    form.steps = model.defaults.steps;
+    form.cfg = model.defaults.cfg;
+    form.scheduler = model.defaults.scheduler;
+
+    const resolutionDefaultSize = model.generation_size || 1024;
+    if (model.resolutions.length) {
+      const preferred =
+        model.resolutions.find(
+          ([width, height]) => width === resolutionDefaultSize && height === resolutionDefaultSize
+        ) ?? model.resolutions[0];
+      if (preferred) {
+        form.width = preferred[0];
+        form.height = preferred[1];
+      }
+    } else {
+      form.width = 512;
+      form.height = 512;
+    }
   }
-}
 
-watch(
-  () => ld.selectedModelId,
-  modelId => {
-    const model = ld.models.find(item => item.id === modelId);
-    applyModelDefaults(model ?? null);
-  },
-  { immediate: true, flush: 'sync' }
-);
+  watch(
+    () => ld.selectedModelId,
+    modelId => {
+      const model = ld.models.find(item => item.id === modelId);
+      applyModelDefaults(model ?? null);
+    },
+    { immediate: true, flush: 'sync' }
+  );
 
-watch(
-  [() => form.prompt, () => form.negativePrompt],
-  () => {
+  watch(
+    [() => form.prompt, () => form.negativePrompt],
+    () => {
+      if (tokenTimer) {
+        clearTimeout(tokenTimer);
+      }
+      tokenTimer = setTimeout(() => {
+        void refreshTokenCounts();
+      }, 300);
+    },
+    { immediate: true }
+  );
+
+  watch(form, scheduleSettingsSave, { deep: true });
+
+  async function applyReusePayload(payload: ReusePayload) {
+    if (payload.modelName && !ld.models.length) {
+      await ld.refreshModels();
+    }
+
+    const model = ld.models.find(item => item.name === payload.modelName) ?? null;
+    if (model) {
+      ld.selectedModelId = model.id;
+      applyModelDefaults(model);
+    }
+
+    const scheduler = schedulerOptions.some(option => option.value === payload.scheduler)
+      ? (payload.scheduler as SchedulerOption)
+      : form.scheduler;
+
+    form.prompt = payload.prompt;
+    form.negativePrompt = payload.negativePrompt;
+    form.steps = payload.steps;
+    form.cfg = payload.cfg;
+    form.seed = payload.seed;
+    form.scheduler = scheduler;
+    form.width = payload.width;
+    form.height = payload.height;
+    form.denoiseStrength = payload.denoiseStrength;
+    mode.value = 'txt2img';
+    clearImage();
+
+    if (model) {
+      await ld.refreshStatus();
+      await ld.selectModel(model.id, form.width, form.height);
+    }
+  }
+
+  watch(
+    () => reuse.payload,
+    payload => {
+      if (!payload) {
+        return;
+      }
+      void (async () => {
+        try {
+          await applyReusePayload(payload);
+          reuse.consume();
+          await nextTick();
+          if (!generating.value) {
+            await handleGenerate();
+          }
+        } catch (error) {
+          reuse.consume();
+          ElMessage.error(error instanceof Error ? error.message : '生成同款失败');
+        }
+      })();
+    },
+    { immediate: true }
+  );
+
+  async function refreshTokenCounts() {
+    tokenController?.abort();
+    const controller = new AbortController();
+    tokenController = controller;
+
+    const [positive, negative] = await Promise.allSettled([
+      form.prompt.trim()
+        ? ld.tokenize(form.prompt, controller.signal)
+        : Promise.resolve({ count: 0, max_length: TOKEN_LIMIT }),
+      form.negativePrompt.trim()
+        ? ld.tokenize(form.negativePrompt, controller.signal)
+        : Promise.resolve({ count: 0, max_length: TOKEN_LIMIT })
+    ]);
+
+    if (controller.signal.aborted) {
+      return;
+    }
+
+    positiveTokenCount.value = positive.status === 'fulfilled' ? positive.value.count : null;
+    negativeTokenCount.value = negative.status === 'fulfilled' ? negative.value.count : null;
+  }
+
+  async function validateTokenLimits() {
+    const [positive, negative] = await Promise.all([
+      form.prompt.trim()
+        ? ld.tokenize(form.prompt)
+        : Promise.resolve({ count: 0, max_length: TOKEN_LIMIT }),
+      form.negativePrompt.trim()
+        ? ld.tokenize(form.negativePrompt)
+        : Promise.resolve({ count: 0, max_length: TOKEN_LIMIT })
+    ]);
+
+    positiveTokenCount.value = positive.count;
+    negativeTokenCount.value = negative.count;
+
+    if (positive.count > TOKEN_LIMIT || negative.count > TOKEN_LIMIT) {
+      ElMessage.warning(`正反提示词不能超过 ${TOKEN_LIMIT} Tokens`);
+      return false;
+    }
+
+    return true;
+  }
+
+  async function ensureModelReady() {
+    if (!ld.models.length) {
+      await ld.refreshModels();
+    }
+
+    const model = formModel.value ?? ld.models[0] ?? null;
+    if (!model) {
+      throw new Error('没有可用模型');
+    }
+
+    await ld.ensureModel(model.id, form.width, form.height);
+    return model;
+  }
+
+  async function handleModelChange(modelId: string) {
+    if (!modelId) {
+      return;
+    }
+
+    const previousId = ld.selectedModelId;
+    ld.selectedModelId = modelId;
+
+    try {
+      await ld.refreshStatus();
+      await ld.selectModel(modelId, form.width, form.height);
+    } catch (error) {
+      ld.selectedModelId = previousId;
+      const previousModel = ld.models.find(item => item.id === previousId) ?? null;
+      applyModelDefaults(previousModel);
+      ElMessage.error(error instanceof Error ? error.message : '模型切换失败');
+    }
+  }
+
+  async function handleDimensionChange(value: string) {
+    const [width, height] = value.split('x').map(Number);
+    if (!width || !height) {
+      return;
+    }
+
+    const previousWidth = form.width;
+    const previousHeight = form.height;
+    form.width = width;
+    form.height = height;
+
+    const model = formModel.value;
+    if (!model) {
+      return;
+    }
+
+    try {
+      await ld.refreshStatus();
+      await ld.selectModel(model.id, form.width, form.height);
+    } catch (error) {
+      form.width = previousWidth;
+      form.height = previousHeight;
+      ElMessage.error(error instanceof Error ? error.message : '模型尺寸切换失败');
+    }
+  }
+
+  async function onImageChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      imageDataUrl.value = dataUrl;
+      imageBase64.value = base64FromDataUrl(dataUrl);
+      if (mode.value === 'txt2img') {
+        mode.value = 'img2img';
+      }
+    } catch (error) {
+      ElMessage.error(error instanceof Error ? error.message : '读取参考图失败');
+    } finally {
+      input.value = '';
+    }
+  }
+
+  async function onMaskChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      maskDataUrl.value = dataUrl;
+      maskBase64.value = base64FromDataUrl(dataUrl);
+    } catch (error) {
+      ElMessage.error(error instanceof Error ? error.message : '读取蒙版失败');
+    } finally {
+      input.value = '';
+    }
+  }
+
+  function clearImage() {
+    imageDataUrl.value = '';
+    imageBase64.value = '';
+    maskDataUrl.value = '';
+    maskBase64.value = '';
+  }
+
+  function clearMask() {
+    maskDataUrl.value = '';
+    maskBase64.value = '';
+  }
+
+  function randomSeed() {
+    form.seed = Math.floor(Math.random() * 9_000_000_000) + 1_000_000_000;
+  }
+
+  function handleDownload() {
+    if (!activeResult.value) {
+      return;
+    }
+    downloadDataUrl(activeResult.value.imageUrl, `ld-${Date.now()}.png`);
+  }
+
+  async function handleGenerate() {
+    if (!form.prompt.trim()) {
+      ElMessage.warning('请输入正向提示词');
+      return;
+    }
+
+    if ((mode.value === 'img2img' || mode.value === 'inpaint') && !imageBase64.value) {
+      ElMessage.warning('请先上传参考图');
+      return;
+    }
+
+    if (mode.value === 'inpaint' && !maskBase64.value) {
+      ElMessage.warning('局部重绘需要上传蒙版');
+      return;
+    }
+
+    generating.value = true;
+    progress.value = 0;
+    progressImage.value = '';
+    resultItems.value = [];
+    activeIndex.value = 0;
+
+    try {
+      const model = await ensureModelReady();
+      if (!(await validateTokenLimits())) {
+        return;
+      }
+
+      const batchCount = Math.max(1, Math.min(4, Math.round(form.batchCount) || 1));
+
+      for (let index = 0; index < batchCount; index += 1) {
+        progressImage.value = '';
+        const params: Record<string, unknown> = {
+          prompt: form.prompt,
+          negative_prompt: form.negativePrompt,
+          steps: form.steps,
+          cfg: form.cfg,
+          scheduler: form.scheduler,
+          use_opencl: form.useOpencl
+        };
+
+        if (form.seed !== -1) {
+          params.seed = Math.min(form.seed + index, 9_999_999_999);
+        }
+
+        if (form.showDiffusionProcess) {
+          params.show_diffusion_process = true;
+          params.show_diffusion_stride = form.showDiffusionStride;
+        }
+
+        if (mode.value !== 'txt2img' && imageBase64.value) {
+          params.image = imageBase64.value;
+          params.denoise_strength = form.denoiseStrength;
+          if (mode.value === 'inpaint' && maskBase64.value) {
+            params.mask = maskBase64.value;
+          }
+        }
+
+        if (form.width === form.height) {
+          params.size = form.width;
+        } else {
+          params.width = form.width;
+          params.height = form.height;
+        }
+
+        const result = await ld.generate(params as unknown as GenerateImageParams, {
+          onProgress: event => {
+            const stepRatio = event.total_steps > 0 ? event.step / event.total_steps : 0;
+            progress.value = (index + stepRatio) / batchCount;
+            if (event.image) {
+              void rawRgbToImageUrl(event.image, form.width, form.height)
+                .then(url => {
+                  progressImage.value = url;
+                })
+                .catch(() => undefined);
+            }
+          }
+        });
+
+        const imageUrl = await rawRgbToImageUrl(result.image, result.width, result.height);
+        const item: ResultItem = {
+          id: `${Date.now()}-${index}`,
+          imageUrl,
+          width: result.width,
+          height: result.height,
+          seed: result.seed,
+          generationTimeMs: result.generation_time_ms
+        };
+        resultItems.value.push(item);
+        activeIndex.value = resultItems.value.length - 1;
+        progress.value = (index + 1) / batchCount;
+
+        await gallery.addItem({
+          prompt: form.prompt,
+          negativePrompt: form.negativePrompt,
+          imageDataUrl: imageUrl,
+          width: result.width,
+          height: result.height,
+          seed: result.seed,
+          steps: form.steps,
+          cfg: form.cfg,
+          scheduler: form.scheduler,
+          modelName: model.name,
+          generationTimeMs: result.generation_time_ms
+        });
+      }
+
+      settings.saveSettings();
+      ElMessage.success(`生成完成 ${batchCount} 张`);
+    } catch (error) {
+      ElMessage.error(error instanceof Error ? error.message : '生成失败');
+    } finally {
+      generating.value = false;
+    }
+  }
+
+  onMounted(() => {
+    if (!ld.models.length) {
+      void ld.refreshModels().catch(() => undefined);
+    }
+  });
+
+  onBeforeUnmount(() => {
+    tokenController?.abort();
     if (tokenTimer) {
       clearTimeout(tokenTimer);
     }
-    tokenTimer = setTimeout(() => {
-      void refreshTokenCounts();
-    }, 300);
-  },
-  { immediate: true }
-);
-
-watch(form, scheduleSettingsSave, { deep: true });
-
-async function applyReusePayload(payload: ReusePayload) {
-  if (payload.modelName && !ld.models.length) {
-    await ld.refreshModels();
-  }
-
-  const model = ld.models.find(item => item.name === payload.modelName) ?? null;
-  if (model) {
-    ld.selectedModelId = model.id;
-    applyModelDefaults(model);
-  }
-
-  const scheduler = schedulerOptions.some(option => option.value === payload.scheduler)
-    ? (payload.scheduler as SchedulerOption)
-    : form.scheduler;
-
-  form.prompt = payload.prompt;
-  form.negativePrompt = payload.negativePrompt;
-  form.steps = payload.steps;
-  form.cfg = payload.cfg;
-  form.seed = payload.seed;
-  form.scheduler = scheduler;
-  form.width = payload.width;
-  form.height = payload.height;
-  form.denoiseStrength = payload.denoiseStrength;
-  mode.value = 'txt2img';
-  clearImage();
-
-  if (model) {
-    await ld.refreshStatus();
-    await ld.selectModel(model.id, form.width, form.height);
-  }
-}
-
-watch(
-  () => reuse.payload,
-  payload => {
-    if (!payload) {
-      return;
+    if (settingsTimer) {
+      clearTimeout(settingsTimer);
+      Object.assign(settings.settings, form);
+      settings.saveSettings();
     }
-    void (async () => {
-      try {
-        await applyReusePayload(payload);
-        reuse.consume();
-        await nextTick();
-        if (!generating.value) {
-          await handleGenerate();
-        }
-      } catch (error) {
-        reuse.consume();
-        ElMessage.error(error instanceof Error ? error.message : '生成同款失败');
-      }
-    })();
-  },
-  { immediate: true }
-);
-
-async function refreshTokenCounts() {
-  tokenController?.abort();
-  const controller = new AbortController();
-  tokenController = controller;
-
-  const [positive, negative] = await Promise.allSettled([
-    form.prompt.trim()
-      ? ld.tokenize(form.prompt, controller.signal)
-      : Promise.resolve({ count: 0, max_length: TOKEN_LIMIT }),
-    form.negativePrompt.trim()
-      ? ld.tokenize(form.negativePrompt, controller.signal)
-      : Promise.resolve({ count: 0, max_length: TOKEN_LIMIT })
-  ]);
-
-  if (controller.signal.aborted) {
-    return;
-  }
-
-  positiveTokenCount.value = positive.status === 'fulfilled' ? positive.value.count : null;
-  negativeTokenCount.value = negative.status === 'fulfilled' ? negative.value.count : null;
-}
-
-async function validateTokenLimits() {
-  const [positive, negative] = await Promise.all([
-    form.prompt.trim()
-      ? ld.tokenize(form.prompt)
-      : Promise.resolve({ count: 0, max_length: TOKEN_LIMIT }),
-    form.negativePrompt.trim()
-      ? ld.tokenize(form.negativePrompt)
-      : Promise.resolve({ count: 0, max_length: TOKEN_LIMIT })
-  ]);
-
-  positiveTokenCount.value = positive.count;
-  negativeTokenCount.value = negative.count;
-
-  if (positive.count > TOKEN_LIMIT || negative.count > TOKEN_LIMIT) {
-    ElMessage.warning(`正反提示词不能超过 ${TOKEN_LIMIT} Tokens`);
-    return false;
-  }
-
-  return true;
-}
-
-async function ensureModelReady() {
-  if (!ld.models.length) {
-    await ld.refreshModels();
-  }
-
-  const model = formModel.value ?? ld.models[0] ?? null;
-  if (!model) {
-    throw new Error('没有可用模型');
-  }
-
-  await ld.ensureModel(model.id, form.width, form.height);
-  return model;
-}
-
-async function handleModelChange(modelId: string) {
-  if (!modelId) {
-    return;
-  }
-
-  const previousId = ld.selectedModelId;
-  ld.selectedModelId = modelId;
-
-  try {
-    await ld.refreshStatus();
-    await ld.selectModel(modelId, form.width, form.height);
-  } catch (error) {
-    ld.selectedModelId = previousId;
-    const previousModel = ld.models.find(item => item.id === previousId) ?? null;
-    applyModelDefaults(previousModel);
-    ElMessage.error(error instanceof Error ? error.message : '模型切换失败');
-  }
-}
-
-async function handleDimensionChange(value: string) {
-  const [width, height] = value.split('x').map(Number);
-  if (!width || !height) {
-    return;
-  }
-
-  const previousWidth = form.width;
-  const previousHeight = form.height;
-  form.width = width;
-  form.height = height;
-
-  const model = formModel.value;
-  if (!model) {
-    return;
-  }
-
-  try {
-    await ld.refreshStatus();
-    await ld.selectModel(model.id, form.width, form.height);
-  } catch (error) {
-    form.width = previousWidth;
-    form.height = previousHeight;
-    ElMessage.error(error instanceof Error ? error.message : '模型尺寸切换失败');
-  }
-}
-
-async function onImageChange(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-  if (!file) {
-    return;
-  }
-
-  try {
-    const dataUrl = await readFileAsDataUrl(file);
-    imageDataUrl.value = dataUrl;
-    imageBase64.value = base64FromDataUrl(dataUrl);
-    if (mode.value === 'txt2img') {
-      mode.value = 'img2img';
-    }
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '读取参考图失败');
-  } finally {
-    input.value = '';
-  }
-}
-
-async function onMaskChange(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-  if (!file) {
-    return;
-  }
-
-  try {
-    const dataUrl = await readFileAsDataUrl(file);
-    maskDataUrl.value = dataUrl;
-    maskBase64.value = base64FromDataUrl(dataUrl);
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '读取蒙版失败');
-  } finally {
-    input.value = '';
-  }
-}
-
-function clearImage() {
-  imageDataUrl.value = '';
-  imageBase64.value = '';
-  maskDataUrl.value = '';
-  maskBase64.value = '';
-}
-
-function clearMask() {
-  maskDataUrl.value = '';
-  maskBase64.value = '';
-}
-
-function randomSeed() {
-  form.seed = Math.floor(Math.random() * 9_000_000_000) + 1_000_000_000;
-}
-
-function handleDownload() {
-  if (!activeResult.value) {
-    return;
-  }
-  downloadDataUrl(activeResult.value.imageUrl, `ld-${Date.now()}.png`);
-}
-
-async function handleGenerate() {
-  if (!form.prompt.trim()) {
-    ElMessage.warning('请输入正向提示词');
-    return;
-  }
-
-  if ((mode.value === 'img2img' || mode.value === 'inpaint') && !imageBase64.value) {
-    ElMessage.warning('请先上传参考图');
-    return;
-  }
-
-  if (mode.value === 'inpaint' && !maskBase64.value) {
-    ElMessage.warning('局部重绘需要上传蒙版');
-    return;
-  }
-
-  generating.value = true;
-  progress.value = 0;
-  progressImage.value = '';
-  resultItems.value = [];
-  activeIndex.value = 0;
-
-  try {
-    const model = await ensureModelReady();
-    if (!(await validateTokenLimits())) {
-      return;
-    }
-
-    const batchCount = Math.max(1, Math.min(4, Math.round(form.batchCount) || 1));
-
-    for (let index = 0; index < batchCount; index += 1) {
-      progressImage.value = '';
-      const params: Record<string, unknown> = {
-        prompt: form.prompt,
-        negative_prompt: form.negativePrompt,
-        steps: form.steps,
-        cfg: form.cfg,
-        scheduler: form.scheduler,
-        use_opencl: form.useOpencl
-      };
-
-      if (form.seed !== -1) {
-        params.seed = Math.min(form.seed + index, 9_999_999_999);
-      }
-
-      if (form.showDiffusionProcess) {
-        params.show_diffusion_process = true;
-        params.show_diffusion_stride = form.showDiffusionStride;
-      }
-
-      if (mode.value !== 'txt2img' && imageBase64.value) {
-        params.image = imageBase64.value;
-        params.denoise_strength = form.denoiseStrength;
-        if (mode.value === 'inpaint' && maskBase64.value) {
-          params.mask = maskBase64.value;
-        }
-      }
-
-      if (form.width === form.height) {
-        params.size = form.width;
-      } else {
-        params.width = form.width;
-        params.height = form.height;
-      }
-
-      const result = await ld.generate(params as unknown as GenerateImageParams, {
-        onProgress: event => {
-          const stepRatio = event.total_steps > 0 ? event.step / event.total_steps : 0;
-          progress.value = (index + stepRatio) / batchCount;
-          if (event.image) {
-            void rawRgbToImageUrl(event.image, form.width, form.height)
-              .then(url => {
-                progressImage.value = url;
-              })
-              .catch(() => undefined);
-          }
-        }
-      });
-
-      const imageUrl = await rawRgbToImageUrl(result.image, result.width, result.height);
-      const item: ResultItem = {
-        id: `${Date.now()}-${index}`,
-        imageUrl,
-        width: result.width,
-        height: result.height,
-        seed: result.seed,
-        generationTimeMs: result.generation_time_ms
-      };
-      resultItems.value.push(item);
-      activeIndex.value = resultItems.value.length - 1;
-      progress.value = (index + 1) / batchCount;
-
-      await gallery.addItem({
-        prompt: form.prompt,
-        negativePrompt: form.negativePrompt,
-        imageDataUrl: imageUrl,
-        width: result.width,
-        height: result.height,
-        seed: result.seed,
-        steps: form.steps,
-        cfg: form.cfg,
-        scheduler: form.scheduler,
-        modelName: model.name,
-        generationTimeMs: result.generation_time_ms
-      });
-    }
-
-    settings.saveSettings();
-    ElMessage.success(`生成完成 ${batchCount} 张`);
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '生成失败');
-  } finally {
-    generating.value = false;
-  }
-}
-
-onMounted(() => {
-  if (!ld.models.length) {
-    void ld.refreshModels().catch(() => undefined);
-  }
-});
-
-onBeforeUnmount(() => {
-  tokenController?.abort();
-  if (tokenTimer) {
-    clearTimeout(tokenTimer);
-  }
-  if (settingsTimer) {
-    clearTimeout(settingsTimer);
-    Object.assign(settings.settings, form);
-    settings.saveSettings();
-  }
-});
+  });
 </script>
 
 <template>
@@ -578,12 +576,7 @@ onBeforeUnmount(() => {
               {{ negativeTokenCount ?? 0 }} / {{ TOKEN_LIMIT }} Tokens
             </span>
           </div>
-          <el-input
-            v-model="form.negativePrompt"
-            type="textarea"
-            :rows="3"
-            resize="vertical"
-          />
+          <el-input v-model="form.negativePrompt" type="textarea" :rows="3" resize="vertical" />
         </div>
 
         <el-collapse>
@@ -811,7 +804,7 @@ onBeforeUnmount(() => {
       </div>
 
       <div
-        class="relative flex min-h-[420px] flex-1 items-center justify-center overflow-hidden rounded-lg border border-dashed border-line bg-surface lg:min-h-[560px]"
+        class="relative flex min-h-105 flex-1 items-center justify-center overflow-hidden rounded-lg border border-dashed border-line bg-surface lg:min-h-140"
       >
         <img
           v-if="activeResult"
@@ -862,9 +855,7 @@ onBeforeUnmount(() => {
         </div>
         <div>
           <div class="text-xs text-muted">耗时</div>
-          <div class="mt-0.5 text-sm">
-            {{ (activeResult.generationTimeMs / 1000).toFixed(2) }}s
-          </div>
+          <div class="mt-0.5 text-sm">{{ (activeResult.generationTimeMs / 1000).toFixed(2) }}s</div>
         </div>
       </div>
     </section>

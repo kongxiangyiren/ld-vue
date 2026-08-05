@@ -68,7 +68,7 @@
 </script>
 
 <template>
-  <div class="mx-auto max-w-[1480px] p-4 lg:p-6">
+  <div class="mx-auto max-w-370 p-4 lg:p-6">
     <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1 class="text-xl font-semibold lg:text-2xl">模型管理</h1>

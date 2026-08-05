@@ -1,5 +1,5 @@
-import { reactive } from 'vue'
-import { defineStore } from 'pinia'
+import { reactive } from 'vue';
+import { defineStore } from 'pinia';
 
 export type SchedulerOption =
   | 'dpm'
@@ -11,26 +11,26 @@ export type SchedulerOption =
   | 'euler_a_karras'
   | 'euler'
   | 'euler_karras'
-  | 'lcm'
+  | 'lcm';
 
 export interface GeneratorSettings {
-  prompt: string
-  negativePrompt: string
-  steps: number
-  cfg: number
-  seed: number
-  scheduler: SchedulerOption
-  size: number
-  width: number
-  height: number
-  denoiseStrength: number
-  batchCount: number
-  showDiffusionProcess: boolean
-  showDiffusionStride: number
-  useOpencl: boolean
+  prompt: string;
+  negativePrompt: string;
+  steps: number;
+  cfg: number;
+  seed: number;
+  scheduler: SchedulerOption;
+  size: number;
+  width: number;
+  height: number;
+  denoiseStrength: number;
+  batchCount: number;
+  showDiffusionProcess: boolean;
+  showDiffusionStride: number;
+  useOpencl: boolean;
 }
 
-const STORAGE_KEY = 'ld:settings'
+const STORAGE_KEY = 'ld:settings';
 
 const defaultSettings: GeneratorSettings = {
   prompt: '',
@@ -47,32 +47,32 @@ const defaultSettings: GeneratorSettings = {
   batchCount: 1,
   showDiffusionProcess: true,
   showDiffusionStride: 4,
-  useOpencl: false,
-}
+  useOpencl: false
+};
 
 function loadSettings(): GeneratorSettings {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
+    const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
-      return { ...defaultSettings }
+      return { ...defaultSettings };
     }
-    return { ...defaultSettings, ...(JSON.parse(stored) as Partial<GeneratorSettings>) }
+    return { ...defaultSettings, ...(JSON.parse(stored) as Partial<GeneratorSettings>) };
   } catch {
-    return { ...defaultSettings }
+    return { ...defaultSettings };
   }
 }
 
 export const useSettingsStore = defineStore('settings', () => {
-  const settings = reactive<GeneratorSettings>(loadSettings())
+  const settings = reactive<GeneratorSettings>(loadSettings());
 
   function saveSettings() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   }
 
   function resetSettings() {
-    Object.assign(settings, defaultSettings)
-    saveSettings()
+    Object.assign(settings, defaultSettings);
+    saveSettings();
   }
 
-  return { settings, saveSettings, resetSettings }
-})
+  return { settings, saveSettings, resetSettings };
+});

@@ -1,45 +1,45 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
-import { RouterLink, RouterView, useRoute } from 'vue-router';
-import { Collection, MagicStick, Monitor, Refresh, Setting } from '@element-plus/icons-vue';
-import { ElMessage } from 'element-plus';
+  import { computed, onMounted } from 'vue';
+  import { RouterLink, RouterView, useRoute } from 'vue-router';
+  import { Collection, MagicStick, Monitor, Refresh, Setting } from '@element-plus/icons-vue';
+  import { ElMessage } from 'element-plus';
 
-import { useLdStore } from '@/stores/ld';
-import { API_BASE } from '@/utils/config';
+  import { useLdStore } from '@/stores/ld';
+  import { API_BASE } from '@/utils/config';
 
-const route = useRoute();
-const ld = useLdStore();
+  const route = useRoute();
+  const ld = useLdStore();
 
-const navigation = [
-  { label: '生成', to: '/', icon: MagicStick },
-  { label: '模型管理', to: '/model-management', icon: Monitor },
-  { label: '生成画廊', to: '/gallery', icon: Collection },
-  { label: '默认参数', to: '/settings', icon: Setting }
-];
+  const navigation = [
+    { label: '生成', to: '/', icon: MagicStick },
+    { label: '模型管理', to: '/model-management', icon: Monitor },
+    { label: '生成画廊', to: '/gallery', icon: Collection },
+    { label: '默认参数', to: '/settings', icon: Setting }
+  ];
 
-const isActive = (path: string) =>
-  path === '/' ? route.path === '/' : route.path.startsWith(path);
+  const isActive = (path: string) =>
+    path === '/' ? route.path === '/' : route.path.startsWith(path);
 
-const statusTone = computed(() => {
-  const state = ld.status?.state;
-  if (state === 'running') return 'bg-emerald-100 text-emerald-700';
-  if (state === 'starting') return 'bg-amber-100 text-amber-700';
-  if (state === 'error') return 'bg-red-100 text-red-700';
-  return 'bg-slate-200 text-slate-600';
-});
+  const statusTone = computed(() => {
+    const state = ld.status?.state;
+    if (state === 'running') return 'bg-emerald-100 text-emerald-700';
+    if (state === 'starting') return 'bg-amber-100 text-amber-700';
+    if (state === 'error') return 'bg-red-100 text-red-700';
+    return 'bg-slate-200 text-slate-600';
+  });
 
-async function refreshBackend() {
-  try {
-    await Promise.all([ld.refreshInfo(), ld.refreshModels(), ld.refreshStatus()]);
-    ElMessage.success('后端状态已刷新');
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '刷新失败');
+  async function refreshBackend() {
+    try {
+      await Promise.all([ld.refreshInfo(), ld.refreshModels(), ld.refreshStatus()]);
+      ElMessage.success('后端状态已刷新');
+    } catch (error) {
+      ElMessage.error(error instanceof Error ? error.message : '刷新失败');
+    }
   }
-}
 
-onMounted(() => {
-  void ld.loadInitial();
-});
+  onMounted(() => {
+    void ld.loadInitial();
+  });
 </script>
 
 <template>
@@ -48,7 +48,9 @@ onMounted(() => {
       <div class="mx-auto max-w-[1600px] px-4 lg:px-6">
         <div class="flex h-14 items-center gap-4">
           <div class="flex min-w-0 items-center gap-2.5">
-            <div class="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-white">
+            <div
+              class="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-white"
+            >
               <el-icon :size="17"><MagicStick /></el-icon>
             </div>
             <div class="min-w-0">
