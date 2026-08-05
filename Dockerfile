@@ -9,7 +9,6 @@ COPY public ./public
 COPY index.html env.d.ts vite.config.ts tsconfig.json tsconfig.app.json tsconfig.node.json auto-imports.d.ts components.d.ts ./
 COPY src ./src
 
-
 ARG VITE_LD_API_BASE=/
 ENV VITE_LD_API_BASE=$VITE_LD_API_BASE
 RUN npm run build

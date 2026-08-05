@@ -2,7 +2,6 @@
   import { computed, onMounted } from 'vue';
   import { RouterLink, RouterView, useRoute } from 'vue-router';
   import { Collection, MagicStick, Monitor, Refresh, Setting } from '@element-plus/icons-vue';
-  import { ElMessage } from 'element-plus';
 
   import { useLdStore } from '@/stores/ld';
   import { API_BASE } from '@/utils/config';
@@ -54,7 +53,7 @@
               <el-icon :size="17"><MagicStick /></el-icon>
             </div>
             <div class="min-w-0">
-              <div class="truncate text-sm font-semibold leading-4">AI 图片工坊</div>
+              <div class="truncate text-sm leading-4 font-semibold">AI 图片工坊</div>
               <div class="truncate text-[11px] text-muted">Local Dream</div>
             </div>
           </div>

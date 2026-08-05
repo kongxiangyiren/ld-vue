@@ -1,6 +1,5 @@
 <script setup lang="ts">
   import { computed, onMounted, watch } from 'vue';
-  import { ElMessage } from 'element-plus';
 
   import { useLdStore } from '@/stores/ld';
   import { useSettingsStore } from '@/stores/settings';

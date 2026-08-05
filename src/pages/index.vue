@@ -1,7 +1,6 @@
 <script setup lang="ts">
   import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
   import { Download, Picture, Refresh, UploadFilled, VideoPlay } from '@element-plus/icons-vue';
-  import { ElMessage } from 'element-plus';
   import type { GenerateImageParams, Module } from '@kongxiangyiren/ld-api';
 
   import { useGalleryStore } from '@/stores/gallery';
