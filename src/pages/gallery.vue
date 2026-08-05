@@ -1,10 +1,14 @@
 <script setup lang="ts">
   import { computed, onMounted, ref } from 'vue';
-  import { Delete, Picture, Search, View } from '@element-plus/icons-vue';
+  import { useRouter } from 'vue-router';
+  import { Delete, MagicStick, Picture, Search, View } from '@element-plus/icons-vue';
 
   import { useGalleryStore, type GenerationRecord } from '@/stores/gallery';
+  import { useReuseStore } from '@/stores/reuse';
 
   const gallery = useGalleryStore();
+  const router = useRouter();
+  const reuse = useReuseStore();
 
   defineOptions({ name: 'GalleryPage' });
 
@@ -64,6 +68,22 @@
   function openPreview(item: GenerationRecord) {
     previewId.value = item.id;
     previewVisible.value = true;
+  }
+
+  async function generateSame(item: GenerationRecord) {
+    reuse.setPayload({
+      prompt: item.prompt,
+      negativePrompt: item.negativePrompt,
+      steps: item.steps,
+      cfg: item.cfg,
+      seed: item.seed,
+      scheduler: item.scheduler,
+      width: item.width,
+      height: item.height,
+      denoiseStrength: 0.6,
+      modelName: item.modelName
+    });
+    await router.push('/');
   }
 
   async function removeItem(item: GenerationRecord) {
@@ -133,6 +153,9 @@
   }
 
   onMounted(() => {
+    if (gallery.loaded) {
+      return;
+    }
     void gallery
       .loadItems()
       .then(() => {
@@ -181,6 +204,17 @@
 
     <div v-loading="gallery.loading" class="min-h-80">
       <div
+        v-if="gallery.loading && !filteredItems.length"
+        class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4"
+      >
+        <div
+          v-for="n in 8"
+          :key="n"
+          class="aspect-square animate-pulse rounded-lg border border-line bg-white"
+        ></div>
+      </div>
+
+      <div
         v-if="!gallery.loading && !filteredItems.length"
         class="flex min-h-80 flex-col items-center justify-center gap-3 text-muted"
       >
@@ -195,7 +229,7 @@
           class="group relative overflow-hidden rounded-lg border border-line bg-white"
           :class="isSelected(item.id) ? 'ring-2 ring-primary' : ''"
         >
-          <div class="absolute top-3 left-3 z-10">
+          <div class="absolute top-3 left-3 z-20">
             <el-checkbox
               :model-value="isSelected(item.id)"
               size="large"
@@ -273,9 +307,24 @@
                 <div class="mt-1">{{ formatDate(previewItem.createdAt) }}</div>
               </div>
             </div>
-            <el-button class="w-full" type="primary" @click="removeItem(previewItem)">
-              删除记录
-            </el-button>
+            <div class="flex w-full flex-col gap-2">
+              <el-button
+                class="w-full"
+                type="primary"
+                :icon="MagicStick"
+                @click="generateSame(previewItem)"
+              >
+                生成同款
+              </el-button>
+              <el-button
+                class="w-full"
+                :icon="Delete"
+                style="margin-left: 0"
+                @click="removeItem(previewItem)"
+              >
+                删除记录
+              </el-button>
+            </div>
           </div>
         </div>
       </template>

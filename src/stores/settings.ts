@@ -24,6 +24,7 @@ export interface GeneratorSettings {
   width: number
   height: number
   denoiseStrength: number
+  batchCount: number
   showDiffusionProcess: boolean
   showDiffusionStride: number
   useOpencl: boolean
@@ -43,6 +44,7 @@ const defaultSettings: GeneratorSettings = {
   width: 512,
   height: 512,
   denoiseStrength: 0.6,
+  batchCount: 1,
   showDiffusionProcess: true,
   showDiffusionStride: 4,
   useOpencl: false,

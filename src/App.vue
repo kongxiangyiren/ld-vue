@@ -1,124 +1,128 @@
 <script setup lang="ts">
-  import { computed, onMounted } from 'vue';
-  import { RouterLink, RouterView, useRoute } from 'vue-router';
-  import { Collection, MagicStick, Monitor, Refresh, Setting } from '@element-plus/icons-vue';
+import { computed, onMounted } from 'vue';
+import { RouterLink, RouterView, useRoute } from 'vue-router';
+import { Collection, MagicStick, Monitor, Refresh, Setting } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
 
-  import { useLdStore } from '@/stores/ld';
-  import { API_BASE } from '@/utils/config';
+import { useLdStore } from '@/stores/ld';
+import { API_BASE } from '@/utils/config';
 
-  const route = useRoute();
-  const ld = useLdStore();
+const route = useRoute();
+const ld = useLdStore();
 
-  const navigation = [
-    { label: '图片生成', to: '/', icon: MagicStick },
+const navigation = [
+  { label: '生成', to: '/', icon: MagicStick },
   { label: '模型管理', to: '/model-management', icon: Monitor },
-    { label: '生成画廊', to: '/gallery', icon: Collection },
-    { label: '默认参数', to: '/settings', icon: Setting }
-  ];
+  { label: '生成画廊', to: '/gallery', icon: Collection },
+  { label: '默认参数', to: '/settings', icon: Setting }
+];
 
-  const isActive = (path: string) =>
-    path === '/' ? route.path === '/' : route.path.startsWith(path);
+const isActive = (path: string) =>
+  path === '/' ? route.path === '/' : route.path.startsWith(path);
 
-  const statusTone = computed(() => {
-    const state = ld.status?.state;
-    if (state === 'running') return 'bg-emerald-100 text-emerald-700';
-    if (state === 'starting') return 'bg-amber-100 text-amber-700';
-    if (state === 'error') return 'bg-red-100 text-red-700';
-    return 'bg-slate-200 text-slate-600';
-  });
+const statusTone = computed(() => {
+  const state = ld.status?.state;
+  if (state === 'running') return 'bg-emerald-100 text-emerald-700';
+  if (state === 'starting') return 'bg-amber-100 text-amber-700';
+  if (state === 'error') return 'bg-red-100 text-red-700';
+  return 'bg-slate-200 text-slate-600';
+});
 
-  async function refreshBackend() {
-    try {
-      await Promise.all([ld.refreshInfo(), ld.refreshModels(), ld.refreshStatus()]);
-      ElMessage.success('后端状态已刷新');
-    } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '刷新失败');
-    }
+async function refreshBackend() {
+  try {
+    await Promise.all([ld.refreshInfo(), ld.refreshModels(), ld.refreshStatus()]);
+    ElMessage.success('后端状态已刷新');
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '刷新失败');
   }
+}
 
-  onMounted(() => {
-    void ld.loadInitial();
-  });
+onMounted(() => {
+  void ld.loadInitial();
+});
 </script>
 
 <template>
-  <div class="min-h-screen lg:flex">
-    <aside
-      class="flex flex-col border-b border-slate-800 bg-ink text-white lg:min-h-screen lg:w-64 lg:border-r lg:border-b-0"
-    >
-      <div class="flex items-center gap-3 px-5 py-4 lg:py-6">
-        <div
-          class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary text-white"
-        >
-          <el-icon :size="22"><MagicStick /></el-icon>
-        </div>
-        <div class="min-w-0">
-          <div class="truncate text-base font-semibold">AI 图片工坊</div>
-          <div class="truncate text-xs text-slate-400">Local Dream</div>
-        </div>
-      </div>
+  <div class="min-h-screen bg-surface">
+    <header class="sticky top-0 z-30 border-b border-line bg-white/95 backdrop-blur">
+      <div class="mx-auto max-w-[1600px] px-4 lg:px-6">
+        <div class="flex h-14 items-center gap-4">
+          <div class="flex min-w-0 items-center gap-2.5">
+            <div class="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-white">
+              <el-icon :size="17"><MagicStick /></el-icon>
+            </div>
+            <div class="min-w-0">
+              <div class="truncate text-sm font-semibold leading-4">AI 图片工坊</div>
+              <div class="truncate text-[11px] text-muted">Local Dream</div>
+            </div>
+          </div>
 
-      <nav
-        class="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-1 lg:flex-col lg:overflow-visible lg:px-4 lg:py-2"
-      >
-        <RouterLink
-          v-for="item in navigation"
-          :key="item.to"
-          :to="item.to"
-          class="flex shrink-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors"
-          :class="
-            isActive(item.to)
-              ? 'bg-white/10 text-white'
-              : 'text-slate-400 hover:bg-white/5 hover:text-white'
-          "
-        >
-          <el-icon :size="18"><component :is="item.icon" /></el-icon>
-          <span>{{ item.label }}</span>
-        </RouterLink>
-      </nav>
+          <nav class="hidden flex-1 items-center gap-1 lg:flex">
+            <RouterLink
+              v-for="item in navigation"
+              :key="item.to"
+              :to="item.to"
+              class="flex items-center gap-2 border-b-2 px-3 py-3.5 text-sm font-medium transition-colors"
+              :class="
+                isActive(item.to)
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted hover:text-ink'
+              "
+            >
+              <el-icon :size="16"><component :is="item.icon" /></el-icon>
+              <span>{{ item.label }}</span>
+            </RouterLink>
+          </nav>
 
-      <div class="hidden border-t border-slate-800 px-4 py-4 lg:block">
-        <div class="flex items-center justify-between gap-2 text-xs">
-          <span class="text-slate-400">后端</span>
-          <button
-            class="inline-flex items-center gap-1 text-slate-300 transition-colors hover:text-white"
-            type="button"
-            @click="refreshBackend"
+          <div class="ml-auto flex items-center gap-2 lg:ml-0">
+            <span
+              class="hidden rounded-full px-2.5 py-1 text-xs font-medium sm:inline-flex"
+              :class="statusTone"
+            >
+              {{ ld.statusLabel }}
+            </span>
+            <button
+              class="inline-flex size-9 items-center justify-center rounded-md border border-line text-muted transition-colors hover:border-primary hover:text-primary"
+              type="button"
+              title="刷新后端"
+              @click="refreshBackend"
+            >
+              <el-icon :size="16"><Refresh /></el-icon>
+            </button>
+          </div>
+        </div>
+
+        <nav class="flex gap-1 overflow-x-auto pb-2 lg:hidden">
+          <RouterLink
+            v-for="item in navigation"
+            :key="item.to"
+            :to="item.to"
+            class="flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium"
+            :class="
+              isActive(item.to)
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted hover:bg-slate-100 hover:text-ink'
+            "
           >
-            <el-icon :size="14"><Refresh /></el-icon>
-            刷新
-          </button>
-        </div>
-        <div
-          class="mt-2 truncate rounded-md bg-white/5 px-2 py-1.5 font-mono text-[11px] text-slate-300"
-        >
-          {{ API_BASE }}
-        </div>
-        <div class="mt-3 flex items-center gap-2 text-xs">
-          <span class="size-2 rounded-full bg-emerald-400"></span>
-          <span>{{ ld.statusLabel }}</span>
-          <span v-if="ld.selectedModel" class="truncate text-slate-500">
-            {{ ld.selectedModel.name }}
-          </span>
-        </div>
+            <el-icon :size="15"><component :is="item.icon" /></el-icon>
+            <span>{{ item.label }}</span>
+          </RouterLink>
+        </nav>
       </div>
-    </aside>
+    </header>
 
-    <main class="min-w-0 flex-1">
-      <header
-        class="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-surface/95 px-4 py-3 backdrop-blur lg:hidden"
-      >
-        <div class="flex size-9 items-center justify-center rounded-lg bg-primary text-white">
-          <el-icon :size="18"><MagicStick /></el-icon>
+    <main class="mx-auto max-w-[1600px] px-4 py-5 lg:px-6">
+      <div class="mb-4 flex items-center justify-between gap-3">
+        <div class="min-w-0">
+          <div class="truncate font-mono text-xs text-muted">{{ API_BASE }}</div>
+          <div v-if="ld.selectedModel" class="mt-1 truncate text-sm font-medium">
+            {{ ld.selectedModel.name }}
+          </div>
         </div>
-        <div class="min-w-0 flex-1">
-          <div class="truncate text-sm font-semibold">AI 图片工坊</div>
-          <div class="truncate text-xs text-muted">{{ API_BASE }}</div>
-        </div>
-        <span class="rounded-full px-2.5 py-1 text-xs font-medium" :class="statusTone">
+        <span class="rounded-full px-2.5 py-1 text-xs font-medium sm:hidden" :class="statusTone">
           {{ ld.statusLabel }}
         </span>
-      </header>
+      </div>
 
       <RouterView />
     </main>

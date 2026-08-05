@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { onMounted, watch } from 'vue';
+  import { computed, onMounted, watch } from 'vue';
   import { ElMessage } from 'element-plus';
 
   import { useLdStore } from '@/stores/ld';
@@ -10,6 +10,10 @@
   const settings = useSettingsStore();
 
   defineOptions({ name: 'SettingsPage' });
+
+  const settingsModel = computed(
+    () => ld.models.find(item => item.id === ld.selectedModelId) ?? null
+  );
 
   watch(
     () => settings.settings.size,
@@ -78,29 +82,29 @@
         </el-select>
       </div>
 
-      <el-descriptions v-if="ld.selectedModel" :column="2" border>
-        <el-descriptions-item label="模型名称">{{ ld.selectedModel.name }}</el-descriptions-item>
+      <el-descriptions v-if="settingsModel" :column="2" border>
+        <el-descriptions-item label="模型名称">{{ settingsModel.name }}</el-descriptions-item>
         <el-descriptions-item label="采样步数">
-          {{ ld.selectedModel.defaults.steps }}
+          {{ settingsModel.defaults.steps }}
         </el-descriptions-item>
-        <el-descriptions-item label="CFG">{{ ld.selectedModel.defaults.cfg }}</el-descriptions-item>
+        <el-descriptions-item label="CFG">{{ settingsModel.defaults.cfg }}</el-descriptions-item>
         <el-descriptions-item label="采样器">
-          {{ schedulerLabel(ld.selectedModel.defaults.scheduler) }}
+          {{ schedulerLabel(settingsModel.defaults.scheduler) }}
         </el-descriptions-item>
         <el-descriptions-item label="正向提示词" :span="2">
           <p class="text-sm leading-6 wrap-break-word whitespace-pre-wrap">
-            {{ ld.selectedModel.defaults.prompt }}
+            {{ settingsModel.defaults.prompt }}
           </p>
         </el-descriptions-item>
         <el-descriptions-item label="反向提示词" :span="2">
           <p class="text-sm leading-6 wrap-break-word whitespace-pre-wrap text-muted">
-            {{ ld.selectedModel.defaults.negative_prompt }}
+            {{ settingsModel.defaults.negative_prompt }}
           </p>
         </el-descriptions-item>
         <el-descriptions-item label="支持尺寸" :span="2">
-          <div v-if="ld.selectedModel.resolutions.length" class="flex flex-wrap gap-1.5">
+          <div v-if="settingsModel.resolutions.length" class="flex flex-wrap gap-1.5">
             <span
-              v-for="[width, height] in ld.selectedModel.resolutions"
+              v-for="[width, height] in settingsModel.resolutions"
               :key="`${width}x${height}`"
               class="rounded-md bg-surface px-2 py-1 font-mono text-xs"
             >
@@ -121,7 +125,16 @@
             <el-input-number
               v-model="settings.settings.seed"
               :min="-1"
-              :max="99999999999"
+              :max="9999999999"
+              class="w-full"
+            />
+          </el-form-item>
+
+          <el-form-item label="默认批量数量">
+            <el-input-number
+              v-model="settings.settings.batchCount"
+              :min="1"
+              :max="4"
               class="w-full"
             />
           </el-form-item>

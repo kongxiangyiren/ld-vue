@@ -28,6 +28,7 @@ function createId() {
 export const useGalleryStore = defineStore('gallery', () => {
   const items = ref<GenerationRecord[]>([])
   const loading = ref(false)
+  const loaded = ref(false)
 
   async function loadItems() {
     loading.value = true
@@ -38,6 +39,7 @@ export const useGalleryStore = defineStore('gallery', () => {
         .slice(0, 80)
     } finally {
       loading.value = false
+      loaded.value = true
     }
   }
 
@@ -63,5 +65,5 @@ export const useGalleryStore = defineStore('gallery', () => {
     await dbClear()
   }
 
-  return { items, loading, loadItems, addItem, removeItem, clearItems }
+  return { items, loading, loaded, loadItems, addItem, removeItem, clearItems }
 })
