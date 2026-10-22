@@ -19,7 +19,7 @@ COPY src ./src
 
 RUN pnpm build-only
 
-FROM nginx:1.27-alpine
+FROM nginx:1.27-alpine-slim
 
 # 运行时 API 地址（host:port），由 nginx.conf.template 在容器启动时注入
 # 8808 = 设备互连（可选，用于模型列表/加载/状态）；8081 = HTTP API（生成必需）
