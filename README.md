@@ -170,6 +170,16 @@ pnpm format       # oxfmt src/
 
 > `@vueuse/integrations` 目前只用到 `useIDBKeyval`（依赖已安装的 `idb-keyval`）。其余集成（useAxios/useQRCode/useDrauu/useSortable 等）需要额外 peer 依赖，按需再装。
 
+## Agent 技能
+
+项目用 [skills](https://github.com/vercel-labs/skills) 管理 AI 编码 Agent 的技能，版本锁定在 [skills-lock.json](skills-lock.json)；克隆后执行：
+
+```sh
+pnpm dlx skills experimental_install
+```
+
+技能会安装到 `.agents/skills/`，该目录已在 `.gitignore` 中忽略。
+
 ## 已知限制
 
 - 扩散过程预览依赖手机 App 内打开「显示生成过程」；未打开时仍显示进度条。
