@@ -1,91 +1,42 @@
-import { fileURLToPath, URL } from 'node:url';
+import { fileURLToPath, URL } from 'node:url'
 
-import { defineConfig } from 'vite';
-import vue from '@vitejs/plugin-vue';
-import vueDevTools from 'vite-plugin-vue-devtools';
-import router from 'vue-router/vite';
-import AutoImport from 'unplugin-auto-import/vite';
-import Components from 'unplugin-vue-components/vite';
-import { ElementPlusResolver } from 'unplugin-vue-components/resolvers';
-import tailwindcss from '@tailwindcss/vite';
+import { defineConfig } from 'vite'
+import VueRouter from 'vue-router/vite'
+import vue from '@vitejs/plugin-vue'
+import vueDevTools from 'vite-plugin-vue-devtools'
+import tailwindcss from '@tailwindcss/vite'
+
+// 手机端 Local Dream 的局域网地址。改成自己手机的 IP 即可。
+// 这些代理只用于本地 dev/preview；Docker 部署时由 nginx.conf.template 负责转发。
+// 8081（HTTP API）是生成必需的；8808（设备互联）是可选能力。
+const LD_DEVICE_URL = 'http://192.168.1.40:8808'
+const LD_API_URL = 'http://192.168.1.40:8081'
+
+// 浏览器只访问同源路径，由 Vite 转发到手机，避免后端没有 CORS 头。
+const proxy = {
+  '/info': LD_DEVICE_URL,
+  '/models': LD_DEVICE_URL,
+  '/select': LD_DEVICE_URL,
+  '/status': LD_DEVICE_URL,
+  '/stop': LD_DEVICE_URL,
+  '/tokenize': LD_API_URL,
+  '/generate': LD_API_URL,
+}
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    router(),
-    vue(),
-    vueDevTools(),
-    AutoImport({
-      resolvers: [
-        ElementPlusResolver({
-          importStyle: 'sass',
-          directives: true
-        })
-      ]
-    }),
-    Components({
-      resolvers: [
-        ElementPlusResolver({
-          importStyle: 'sass',
-          directives: true
-        })
-      ]
-    }),
-    tailwindcss()
-  ],
+  plugins: [VueRouter(), vue(), tailwindcss(), vueDevTools()],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-    }
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
   },
-  css: {
-    preprocessorOptions: {
-      scss: {
-        additionalData: `@use "@/assets/css/element.scss" as *;`
-      }
-    }
-  },
-  build: {
-    reportCompressedSize: false,
-    rolldownOptions: {
-      checks: {
-        pluginTimings: false
-      },
-      output: {
-        chunkFileNames: 'assets/js/[name]-[hash].js',
-        entryFileNames: 'assets/js/[name]-[hash].js',
-        assetFileNames: chunkInfo => {
-          if (
-            chunkInfo.names[0].endsWith('.png') ||
-            chunkInfo.names[0].endsWith('.jpg') ||
-            chunkInfo.names[0].endsWith('.jpeg') ||
-            chunkInfo.names[0].endsWith('.gif') ||
-            chunkInfo.names[0].endsWith('.svg') ||
-            chunkInfo.names[0].endsWith('.webp')
-          ) {
-            return 'assets/img/[name]-[hash].[ext]';
-          }
 
-          return 'assets/[ext]/[name]-[hash].[ext]';
-        },
-        minify: {
-          compress: {
-            dropConsole: true,
-            dropDebugger: true
-          }
-        }
-      }
-    }
-  },
   server: {
-    proxy: {
-      '/info': 'http://192.168.1.40:8808',
-      '/models': 'http://192.168.1.40:8808',
-      '/select': 'http://192.168.1.40:8808',
-      '/status': 'http://192.168.1.40:8808',
-      '/stop': 'http://192.168.1.40:8808',
-      '/tokenize': 'http://192.168.1.40:8081',
-      '/generate': 'http://192.168.1.40:8081'
-    }
-  }
-});
+    proxy,
+  },
+
+  preview: {
+    proxy,
+  },
+})

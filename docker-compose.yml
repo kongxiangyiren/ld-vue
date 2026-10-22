@@ -2,8 +2,11 @@ services:
   ld-vue:
     build: .
     container_name: ld-vue
+    restart: unless-stopped
     ports:
-      - "8080:80"
+      - '2333:80'
     environment:
-      LD_API_8808: "192.168.1.40:8808"
-      LD_API_8081: "192.168.1.40:8081"
+      # 手机端 API 地址，格式 host:port（不要带 http://）
+      # 也可以在启动时用环境变量覆盖：LD_API_8081=192.168.1.40:8081 docker compose up -d
+      LD_API_8808: ${LD_API_8808:-192.168.1.40:8808}
+      LD_API_8081: ${LD_API_8081:-192.168.1.40:8081}

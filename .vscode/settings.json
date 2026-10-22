@@ -5,17 +5,18 @@
     "vite.config.*": "jsconfig*, vitest.config.*, cypress.config.*, playwright.config.*",
     "package.json": "package-lock.json, pnpm*, .yarnrc*, yarn*, .eslint*, eslint*, .oxlint*, oxlint*, .oxfmt*, .prettier*, prettier*, .editorconfig, bun.lock, nub.lock"
   },
+  "js/ts.tsdk.path": "node_modules/typescript/lib",
+  "js/ts.tsdk.promptToUseWorkspaceVersion": true,
   "editor.codeActionsOnSave": {
     "source.fixAll": "explicit"
   },
   "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "js/ts.tsdk.path": "node_modules\\typescript\\lib",
+  "editor.defaultFormatter": "oxc.oxc-vscode",
   "files.associations": {
     "*.css": "tailwindcss"
   },
   "editor.quickSuggestions": {
     "strings": "on"
   },
-  "tailwindCSS.experimental.configFile": "./src/assets/css/tailwind.css"
+  "tailwindCSS.experimental.configFile": "src/assets/main.css"
 }

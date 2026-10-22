@@ -45,9 +45,16 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
-    '/model-management': RouteRecordInfo<
-      '/model-management',
-      '/model-management',
+    '/img2img': RouteRecordInfo<
+      '/img2img',
+      '/img2img',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/inpaint': RouteRecordInfo<
+      '/inpaint',
+      '/inpaint',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -88,9 +95,17 @@ declare module 'vue-router/auto-routes' {
       pathParamNames:
         | never
     }
-    'src/pages/model-management.vue': {
+    'src/pages/img2img.vue': {
       routes:
-        | '/model-management'
+        | '/img2img'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/inpaint.vue': {
+      routes:
+        | '/inpaint'
       views:
         | never
       pathParamNames:

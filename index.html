@@ -4,8 +4,23 @@
     <meta charset="UTF-8">
     <link rel="icon" href="/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Local Dream 本地扩散模型图片生成工具">
-    <title>AI 图片工坊</title>
+    <meta name="color-scheme" content="light dark">
+    <meta
+      name="description"
+      content="Local Dream 本地 AI 绘图站：通过 HTTP API 调用手机端的本地扩散模型，文生图 / 图生图 / 实时进度。"
+    >
+    <title>Local Dream · 本地 AI 绘图</title>
+    <style>
+      /* 首屏加载时的底色，避免主题变量生效前的白闪 */
+      html {
+        background: #f5f6f8;
+      }
+      @media (prefers-color-scheme: dark) {
+        html {
+          background: #0b0f17;
+        }
+      }
+    </style>
   </head>
   <body>
     <div id="app"></div>

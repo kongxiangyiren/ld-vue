@@ -1,0 +1,11 @@
+allowBuilds:
+  '@parcel/watcher': false
+
+minimumReleaseAgeExclude:
+  - '@kongxiangyiren/ld-api@0.1.1'
+
+overrides:
+  'typescript': 'npm:typescript-native-bridge@latest'
+
+python:
+  enabled: true

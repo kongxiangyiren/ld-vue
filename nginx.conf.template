@@ -1,83 +1,57 @@
+# 由 nginx 官方镜像的 envsubst 在容器启动时渲染：
+#   LD_API_8808 -> 设备互连 /info /models /select /status /stop（可选）
+#   LD_API_8081 -> HTTP API /tokenize /generate（生成必需）
+# 值格式为 host:port，例如 192.168.1.40:8081，不要带 http://
+
+upstream ld_device {
+    server ${LD_API_8808};
+}
+
+upstream ld_api {
+    server ${LD_API_8081};
+}
+
 server {
-  listen 80;
-  server_name _;
+    listen 80;
+    server_name _;
 
-  root /usr/share/nginx/html;
-  index index.html;
+    root /usr/share/nginx/html;
+    index index.html;
+    client_max_body_size 48m;
 
-  client_max_body_size 100m;
+    # SPA 路由回退（/、/img2img、/inpaint、/gallery、/settings）
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
 
-  location / {
-    try_files $uri $uri/ /index.html;
-  }
+    # 设备互连：只代理这几个精确路径，避免影响 /img2img 等前端路由
+    location ~ ^/(info|models|select|status|stop)$ {
+        proxy_pass http://ld_device;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_set_header Accept-Encoding "";
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 300s;
+    }
 
-  location = /info {
-    proxy_pass http://${LD_API_8808};
-    proxy_http_version 1.1;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-  }
-
-  location = /models {
-    proxy_pass http://${LD_API_8808};
-    proxy_http_version 1.1;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-  }
-
-  location = /select {
-    proxy_pass http://${LD_API_8808};
-    proxy_http_version 1.1;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-  }
-
-  location = /status {
-    proxy_pass http://${LD_API_8808};
-    proxy_http_version 1.1;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-  }
-
-  location = /stop {
-    proxy_pass http://${LD_API_8808};
-    proxy_http_version 1.1;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-  }
-
-  location = /tokenize {
-    proxy_pass http://${LD_API_8081};
-    proxy_http_version 1.1;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-  }
-
-  location /generate {
-    proxy_pass http://${LD_API_8081};
-    proxy_http_version 1.1;
-    proxy_set_header Accept-Encoding "";
-    proxy_hide_header Content-Length;
-    proxy_buffering off;
-    add_header X-Accel-Buffering no;
-    proxy_cache off;
-    proxy_read_timeout 600s;
-    proxy_set_header Connection "";
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-  }
+    # 生成 API：/generate 是 SSE 长连接，必须关闭缓冲并放宽超时
+    location ~ ^/(tokenize|generate)$ {
+        proxy_pass http://ld_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_set_header Accept-Encoding "";
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
 }

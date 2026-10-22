@@ -1,46 +1,37 @@
-# Repository Guidelines
+## 编码前思考
 
-## Project Structure & Module Organization
+- 明确假设，不确定时询问而非猜测。
+- 存在歧义时，列出多种解释，不默默选定单一方案。
+- 如果任务有明显更简单的做法，直接指出优化思路。
+- 发现代码矛盾、逻辑不一致时及时暂停，请求信息澄清。
 
-- `src/` contains the Vue 3 application.
-- `src/pages/` holds file-based routes. A file such as `model-management.vue` maps to `/model-management`.
-- `src/stores/` contains Pinia stores for Local Dream API state, gallery history, settings, and reuse payloads.
-- `src/utils/` contains browser-compatible helpers such as image encoding, IndexedDB access, and API configuration.
-- `src/assets/css/` contains Tailwind and Element Plus theme overrides.
-- `public/` contains static assets. Docker, Nginx, and deployment configuration live in the repository root.
+## 简洁优先
 
-## Build, Test, and Development Commands
+- 用最少的代码解决问题，拒绝冗余实现。
+- 不为一次性需求创建抽象层、复杂架构。
+- 不盲目增加扩展性、可配置性，应对“未来可能用到”的场景。
+- 若代码可大幅精简，主动重写优化。
+- 校验标准：以资深工程师视角判断，代码若过于复杂，立即简化。
 
-On Windows PowerShell, use `npm.cmd` because `npm.ps1` may be blocked by execution policy.
+## 精准修改
 
-- `npm.cmd install` - install dependencies.
-- `npm.cmd run dev` - start the Vite dev server.
-- `npm.cmd run type-check` - run `vue-tsc`.
-- `npm.cmd run lint` - run oxlint and ESLint with auto-fix.
-- `npm.cmd run build` - type-check and build the production bundle.
-- `npm.cmd run format` - format `src/` with Prettier.
-- `docker-compose up -d --build` - build and run the Nginx production container.
+- 仅修改与当前任务直接相关的代码内容。
+- 不顺手优化相邻代码、注释、排版格式。
+- 不重构原本可以正常运行的代码模块。
+- 严格匹配项目现有代码风格，保留原有编码习惯。
+- 因本次修改产生的无效导入、废弃变量，可直接删除。
+- 发现项目中原有的死代码、冗余内容，仅做文字提醒，不擅自删除。
 
-## Coding Style & Naming Conventions
+## 目标驱动执行
 
-- Use TypeScript and Vue `<script setup lang="ts">`.
-- Use PascalCase for component/page filenames and kebab-case in markup where appropriate.
-- Use camelCase for TypeScript variables and functions.
-- Follow the existing Prettier configuration: 2 spaces, single quotes, semicolons, and a 100-character print width.
-- Reuse Tailwind CSS utility patterns and Element Plus components instead of introducing a new UI abstraction.
-- Keep API usage behind the `LdApi`-backed store and browser compatibility helpers.
+- 执行任务前，定义清晰、可落地的成功标准。
+- 将“修复Bug”转化为：编写用例复现问题，再调试至用例正常通过。
+- 将“新增校验功能”转化为：针对异常输入编写测试用例，保证全部通过。
+- 将“代码重构”转化为：完成重构后，确保原有所有测试用例正常运行。
+- 多步骤复杂任务，先输出简短执行计划，同时标注每一步的验证方式。
 
-## Testing Guidelines
+## 环境要求
 
-No automated test framework is currently configured. Use `npm.cmd run type-check`, `npm.cmd run lint`, and `npm.cmd run build` as the required verification before submitting changes. If shared utility logic grows, add focused tests and document the test command in this file.
+### 关于python的使用
 
-## Commit & Pull Request Guidelines
-
-Repository history uses short commit messages. Prefer concise imperative messages or conventional prefixes such as `feat:`, `fix:`, and `refactor:`. Pull requests should describe the user-facing change, mention API or deployment impact, and include UI screenshots when visual behavior changes.
-
-## Configuration & Deployment Tips
-
-- `VITE_LD_API_BASE` controls the frontend API base; the default is `/`.
-- Docker runtime variables `LD_API_8808` and `LD_API_8081` configure Nginx proxy targets.
-- Keep frontend routes distinct from API paths such as `/models`; the model management page currently uses `/model-management`.
-- Never commit tokens, credentials, or private backend addresses beyond the existing local defaults.
+如果要使用python一定要用pnpm创建venv并管理

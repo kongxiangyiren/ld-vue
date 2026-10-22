@@ -1,133 +1,104 @@
-const PNG_SIGNATURE = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
-
-const CRC_TABLE = (() => {
-  const table = new Uint32Array(256);
-  for (let index = 0; index < 256; index += 1) {
-    let value = index;
-    for (let bit = 0; bit < 8; bit += 1) {
-      value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
-    }
-    table[index] = value >>> 0;
+/** base64 → 原始字节。 */
+export function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index)
   }
-  return table;
-})();
-
-function concatBytes(chunks: Uint8Array[]) {
-  const length = chunks.reduce((total, chunk) => total + chunk.length, 0);
-  const result = new Uint8Array(length);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return result;
+  return bytes
 }
 
-function crc32(bytes: Uint8Array) {
-  let crc = 0xffffffff;
-  for (const byte of bytes) {
-    crc = (CRC_TABLE[(crc ^ byte) & 0xff] ?? 0) ^ (crc >>> 8);
-  }
-  return (crc ^ 0xffffffff) >>> 0;
-}
-
-function uint32Bytes(value: number) {
-  const bytes = new Uint8Array(4);
-  const view = new DataView(bytes.buffer);
-  view.setUint32(0, value);
-  return bytes;
-}
-
-function createChunk(type: string, data = new Uint8Array()) {
-  const typeBytes = new TextEncoder().encode(type);
-  const crcInput = new Uint8Array(typeBytes.length + data.length);
-  crcInput.set(typeBytes);
-  crcInput.set(data, typeBytes.length);
-  return concatBytes([uint32Bytes(data.length), typeBytes, data, uint32Bytes(crc32(crcInput))]);
-}
-
-function deflateStored(input: Uint8Array) {
-  const chunks: Uint8Array[] = [new Uint8Array([0x78, 0x01])];
-  let offset = 0;
-
-  while (offset < input.length) {
-    const remaining = input.length - offset;
-    const length = Math.min(remaining, 0xffff);
-    const isLast = offset + length === input.length;
-    const header = new Uint8Array(5);
-    header[0] = isLast ? 0x01 : 0x00;
-    header[1] = length & 0xff;
-    header[2] = (length >>> 8) & 0xff;
-    header[3] = ~length & 0xff;
-    header[4] = (~length >>> 8) & 0xff;
-    chunks.push(header, input.subarray(offset, offset + length));
-    offset += length;
+/**
+ * 后端返回的原始像素是 RGB（3 通道，逐像素排列）。
+ * 这里转成 canvas 需要的 RGBA（alpha 固定 255）。
+ */
+export function toRgba(bytes: Uint8Array, width: number, height: number): Uint8ClampedArray {
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) {
+    throw new Error('无效的图片尺寸')
   }
 
-  return concatBytes(chunks);
-}
-
-function encodePng(width: number, height: number, rgb: Uint8Array) {
-  const expectedLength = width * height * 3;
-  if (rgb.length !== expectedLength) {
-    throw new Error('RGB 像素数据长度不匹配');
+  const pixelCount = width * height
+  if (bytes.length !== pixelCount * 3) {
+    throw new Error('原始像素长度与尺寸不匹配')
   }
 
-  const ihdr = new Uint8Array(13);
-  const view = new DataView(ihdr.buffer);
-  view.setUint32(0, width);
-  view.setUint32(4, height);
-  ihdr[8] = 8;
-  ihdr[9] = 2;
-
-  const rowLength = width * 3 + 1;
-  const raw = new Uint8Array(rowLength * height);
-  for (let row = 0; row < height; row += 1) {
-    raw[row * rowLength] = 0;
-    raw.set(rgb.subarray(row * width * 3, (row + 1) * width * 3), row * rowLength + 1);
+  const rgba = new Uint8ClampedArray(pixelCount * 4)
+  for (let pixel = 0; pixel < pixelCount; pixel += 1) {
+    const source = pixel * 3
+    const target = pixel * 4
+    rgba[target] = bytes[source] ?? 0
+    rgba[target + 1] = bytes[source + 1] ?? 0
+    rgba[target + 2] = bytes[source + 2] ?? 0
+    rgba[target + 3] = 255
   }
-
-  const png = concatBytes([
-    PNG_SIGNATURE,
-    createChunk('IHDR', ihdr),
-    createChunk('IDAT', deflateStored(raw)),
-    createChunk('IEND')
-  ]);
-
-  let binary = '';
-  const chunkSize = 0x8000;
-  for (let offset = 0; offset < png.length; offset += chunkSize) {
-    binary += String.fromCharCode(...png.subarray(offset, offset + chunkSize));
-  }
-  return `data:image/png;base64,${btoa(binary)}`;
+  return rgba
 }
 
-export function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ''));
-    reader.onerror = () => reject(reader.error ?? new Error('读取文件失败'));
-    reader.readAsDataURL(file);
-  });
+const PNG_BASE64_PREFIX = 'iVBORw0KGgo'
+const JPEG_BASE64_PREFIX = '/9j/'
+
+/** progress 事件有时直接给编码后的图片，用魔数判断。 */
+export function encodedImageMime(base64: string): 'image/png' | 'image/jpeg' | null {
+  if (base64.startsWith(PNG_BASE64_PREFIX)) return 'image/png'
+  if (base64.startsWith(JPEG_BASE64_PREFIX)) return 'image/jpeg'
+  return null
 }
 
-export function base64FromDataUrl(dataUrl: string) {
-  const commaIndex = dataUrl.indexOf(',');
-  return commaIndex >= 0 ? dataUrl.slice(commaIndex + 1) : dataUrl;
-}
-
-export function rawRgbToImageUrl(
-  imageBase64: string,
+function drawToDataUrl(
+  bytes: Uint8Array,
   width: number,
-  height: number
-): Promise<string> {
-  const rgb = Uint8Array.from(atob(imageBase64), char => char.charCodeAt(0));
-  return Promise.resolve(encodePng(width, height, rgb));
+  height: number,
+  mime: string,
+  quality?: number,
+): string {
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('当前浏览器不支持 Canvas 2D')
+
+  const imageData = context.createImageData(width, height)
+  imageData.data.set(toRgba(bytes, width, height))
+  context.putImageData(imageData, 0, 0)
+  return canvas.toDataURL(mime, quality)
 }
 
-export function downloadDataUrl(dataUrl: string, filename: string) {
-  const anchor = document.createElement('a');
-  anchor.href = dataUrl;
-  anchor.download = filename;
-  anchor.click();
+/** 生成结果：原始 RGB base64 → PNG data URL。 */
+export function rawRgbToDataUrl(base64: string, width: number, height: number): string {
+  return drawToDataUrl(base64ToBytes(base64), width, height, 'image/png')
+}
+
+/**
+ * 扩散过程的中间预览。格式或尺寸不匹配时返回 null，
+ * 调用方只保留进度条，不影响生成流程。
+ */
+export function previewToDataUrl(
+  image: string,
+  format: string | undefined,
+  width: number,
+  height: number,
+): string | null {
+  if (!image) return null
+
+  const encodedMime = encodedImageMime(image)
+  if (encodedMime) return `data:${encodedMime};base64,${image}`
+
+  if (format !== undefined && format !== 'raw') return null
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0)
+    return null
+
+  let bytes: Uint8Array
+  try {
+    bytes = base64ToBytes(image)
+  } catch {
+    return null
+  }
+  if (bytes.length !== width * height * 3) return null
+
+  try {
+    return drawToDataUrl(bytes, width, height, 'image/jpeg', 0.9)
+  } catch {
+    return null
+  }
 }

@@ -1,131 +1,101 @@
 <script setup lang="ts">
-  import { computed, onMounted } from 'vue';
-  import { RouterLink, RouterView, useRoute } from 'vue-router';
-  import { Collection, MagicStick, Monitor, Refresh, Setting } from '@element-plus/icons-vue';
+import { computed, onMounted } from 'vue'
+import { RouterLink, RouterView } from 'vue-router'
+import { useIntervalFn } from '@vueuse/core'
 
-  import { useLdStore } from '@/stores/ld';
-  import { API_BASE } from '@/utils/config';
+import { useDeviceStore } from '@/stores/device'
 
-  const route = useRoute();
-  const ld = useLdStore();
+const device = useDeviceStore()
 
-  const navigation = [
-    { label: '生成', to: '/', icon: MagicStick },
-    { label: '模型管理', to: '/model-management', icon: Monitor },
-    { label: '生成画廊', to: '/gallery', icon: Collection },
-    { label: '默认参数', to: '/settings', icon: Setting }
-  ];
+interface StatusPill {
+  tone: 'ok' | 'warn' | 'err' | 'idle'
+  text: string
+}
 
-  const isActive = (path: string) =>
-    path === '/' ? route.path === '/' : route.path.startsWith(path);
+const pill = computed<StatusPill>(() => {
+  if (!device.checked) return { tone: 'idle', text: '检测中…' }
 
-  const statusTone = computed(() => {
-    const state = ld.status?.state;
-    if (state === 'running') return 'bg-emerald-100 text-emerald-700';
-    if (state === 'starting') return 'bg-amber-100 text-amber-700';
-    if (state === 'error') return 'bg-red-100 text-red-700';
-    return 'bg-slate-200 text-slate-600';
-  });
-
-  async function refreshBackend() {
-    try {
-      await Promise.all([ld.refreshInfo(), ld.refreshModels(), ld.refreshStatus()]);
-      ElMessage.success('后端状态已刷新');
-    } catch (error) {
-      ElMessage.error(error instanceof Error ? error.message : '刷新失败');
-    }
+  if (device.mode === 'manual') {
+    if (device.probe === 'ok') return { tone: 'ok', text: '仅生成服务在线' }
+    if (device.probe === 'fail') return { tone: 'warn', text: '生成服务未确认' }
+    return { tone: 'idle', text: '检测生成服务…' }
   }
 
-  onMounted(() => {
-    void ld.loadInitial();
-  });
+  const status = device.status
+  if (status?.state === 'running') {
+    const size = `${status.width ?? '?'}×${status.height ?? '?'}`
+    return { tone: 'ok', text: `运行中 · ${device.modelName} · ${size}` }
+  }
+  if (status?.state === 'starting') return { tone: 'warn', text: '模型加载中…' }
+  if (status?.state === 'error') return { tone: 'err', text: '模型异常' }
+  return { tone: 'idle', text: '未加载模型' }
+})
+
+onMounted(() => {
+  void device.refresh()
+})
+
+// 只在设备接口可用时轮询状态；8808 离线时不反复请求。
+useIntervalFn(() => {
+  if (device.mode === 'auto') void device.refreshStatus()
+}, 3000)
 </script>
 
 <template>
-  <div class="min-h-screen bg-surface">
-    <header class="sticky top-0 z-30 border-b border-line bg-white/95 backdrop-blur">
-      <div class="mx-auto max-w-[1600px] px-4 lg:px-6">
-        <div class="flex h-14 items-center gap-4">
-          <div class="flex min-w-0 items-center gap-2.5">
-            <div
-              class="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-white"
-            >
-              <el-icon :size="17"><MagicStick /></el-icon>
-            </div>
-            <div class="min-w-0">
-              <div class="truncate text-sm leading-4 font-semibold">AI 图片工坊</div>
-              <div class="truncate text-[11px] text-muted">Local Dream</div>
-            </div>
-          </div>
+  <div class="flex min-h-screen flex-col">
+    <header class="g-header">
+      <div class="mx-auto flex w-full max-w-[1180px] items-center gap-3 px-4 py-3 sm:px-6">
+        <div class="g-brand-mark" aria-hidden="true">✦</div>
 
-          <nav class="hidden flex-1 items-center gap-1 lg:flex">
-            <RouterLink
-              v-for="item in navigation"
-              :key="item.to"
-              :to="item.to"
-              class="flex items-center gap-2 border-b-2 px-3 py-3.5 text-sm font-medium transition-colors"
-              :class="
-                isActive(item.to)
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted hover:text-ink'
-              "
-            >
-              <el-icon :size="16"><component :is="item.icon" /></el-icon>
-              <span>{{ item.label }}</span>
-            </RouterLink>
-          </nav>
-
-          <div class="ml-auto flex items-center gap-2 lg:ml-0">
-            <span
-              class="hidden rounded-full px-2.5 py-1 text-xs font-medium sm:inline-flex"
-              :class="statusTone"
-            >
-              {{ ld.statusLabel }}
-            </span>
-            <button
-              class="inline-flex size-9 items-center justify-center rounded-md border border-line text-muted transition-colors hover:border-primary hover:text-primary"
-              type="button"
-              title="刷新后端"
-              @click="refreshBackend"
-            >
-              <el-icon :size="16"><Refresh /></el-icon>
-            </button>
-          </div>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-base leading-tight font-semibold">
+            Local Dream
+            <span class="g-muted hidden sm:inline">· 本地 AI 绘图</span>
+          </p>
+          <p class="g-hint hidden truncate sm:block">手机端本地扩散模型 · 图片不离开局域网</p>
         </div>
 
-        <nav class="flex gap-1 overflow-x-auto pb-2 lg:hidden">
-          <RouterLink
-            v-for="item in navigation"
-            :key="item.to"
-            :to="item.to"
-            class="flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium"
-            :class="
-              isActive(item.to)
-                ? 'bg-primary/10 text-primary'
-                : 'text-muted hover:bg-slate-100 hover:text-ink'
-            "
-          >
-            <el-icon :size="15"><component :is="item.icon" /></el-icon>
-            <span>{{ item.label }}</span>
-          </RouterLink>
-        </nav>
+        <RouterLink
+          to="/settings"
+          class="g-pill"
+          :class="`g-pill--${pill.tone}`"
+          :title="pill.text"
+        >
+          <span class="g-pill__dot" aria-hidden="true" />
+          <span class="truncate">{{ pill.text }}</span>
+        </RouterLink>
       </div>
+
+      <nav class="mx-auto w-full max-w-[1180px] px-4 sm:px-6" aria-label="主导航">
+        <div class="g-tabs">
+          <RouterLink to="/" class="g-tab" active-class="g-tab--active">文生图</RouterLink>
+          <RouterLink to="/img2img" class="g-tab" active-class="g-tab--active">图生图</RouterLink>
+          <RouterLink to="/inpaint" class="g-tab" active-class="g-tab--active">局部重画</RouterLink>
+          <RouterLink to="/gallery" class="g-tab" active-class="g-tab--active">画廊</RouterLink>
+          <RouterLink to="/settings" class="g-tab" active-class="g-tab--active">
+            设备与模型
+          </RouterLink>
+        </div>
+      </nav>
     </header>
 
-    <main class="mx-auto max-w-[1600px] px-4 py-5 lg:px-6">
-      <div class="mb-4 flex items-center justify-between gap-3">
-        <div class="min-w-0">
-          <div class="truncate font-mono text-xs text-muted">{{ API_BASE }}</div>
-          <div v-if="ld.selectedModel" class="mt-1 truncate text-sm font-medium">
-            {{ ld.selectedModel.name }}
-          </div>
-        </div>
-        <span class="rounded-full px-2.5 py-1 text-xs font-medium sm:hidden" :class="statusTone">
-          {{ ld.statusLabel }}
-        </span>
-      </div>
-
+    <main class="flex-1">
       <RouterView />
     </main>
+
+    <footer class="g-footer">
+      <div
+        class="mx-auto flex w-full max-w-[1180px] flex-wrap items-center justify-between gap-2 px-4 py-6 text-xs sm:px-6"
+      >
+        <span>
+          由
+          <a href="https://ld-guide.chino.icu/zh/features/http-api" target="_blank" rel="noopener">
+            Local Dream HTTP API
+          </a>
+          驱动 · 生成记录保存在本机浏览器的 IndexedDB
+        </span>
+        <span>@kongxiangyiren/ld-api</span>
+      </div>
+    </footer>
   </div>
 </template>

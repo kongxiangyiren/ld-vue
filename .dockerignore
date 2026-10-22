@@ -1,12 +1,40 @@
+# 依赖与构建产物
 node_modules
+.pnpm-store
 dist
+dist-ssr
+coverage
+*.tsbuildinfo
+
+# 本地缓存与日志
+*.log
+.eslintcache
+__screenshots__
+.tmp
+
+# 版本控制与编辑器
 .git
 .gitignore
-.vite-dev.out.log
-.vite-dev.err.log
-.DS_Store
-*.local
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+.gitattributes
+.vscode
+.idea
+
+# 开发工具配置（镜像内构建不需要）
+.agents
+skills-lock.json
+.nvmrc
+.oxfmtrc.json
+.oxlintrc.json
+eslint.config.ts
+vitest.config.ts
+typed-router.d.ts
+
+# 文档、测试与截图
+README.md
+AGENTS.md
+docs
+src/__tests__
+
+# 本地环境文件
+.env
+.env.*

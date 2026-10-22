@@ -15,8 +15,8 @@ coverage
 *.local
 
 # Editor directories and files
-# .vscode/*
-# !.vscode/extensions.json
+.vscode/*
+!.vscode/extensions.json
 .idea
 *.suo
 *.ntvs*
@@ -37,3 +37,13 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+!.vscode/settings.json
+
+
+# Agent
+.agents
+
+# Local environment (Docker Compose API addresses)
+.env
+.env.*
